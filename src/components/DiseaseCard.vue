@@ -2,7 +2,7 @@
 </script>
 
 <template>
-    <div class="flex flex-col justify-center">
+    <div>
         Ciao
     </div>
 </template>

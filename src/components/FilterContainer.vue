@@ -2,7 +2,7 @@
 </script>
 
 <template>
-    <div class="bg-violet-950 text-white">
+    <div>
         Ciao aaa
     </div>
 </template>

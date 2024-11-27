@@ -1,24 +1,15 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import DiseaseCard from './components/DiseaseCard.vue';
+import FilterContainer from './components/FilterContainer.vue';
 </script>
 
 <template>
-  <HelloWorld msg="Vite + Vue" />
+  <div class="flex flex-col justify-items-center bg-violet-950 text-white w-full h-full">
+    <DiseaseCard/>
+    <FilterContainer/>
+  </div>
+  
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
 </style>
