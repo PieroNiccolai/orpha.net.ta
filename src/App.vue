@@ -1,24 +1,22 @@
 <script setup lang="ts">
 import DiseaseCard from './components/DiseaseCard.vue';
-import { ref, watch, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { parse } from 'csv-parse/browser/esm';
-import csvData from './assets/Orphanet.csv?raw'
-import Multiselect from 'vue-multiselect';
+import orphanet from './assets/Orphanet.csv?raw'
+import orphanetta from './assets/Orphanetta.csv?raw'
+import AutoComplete from 'primevue/autocomplete';
+import Button from 'primevue/button';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import { z } from 'zod';
 
-interface OrphaRow {
-  Conditions: string;
-  "ICD-10": string;
-  "ICD-11": string;
-}
-
-const name = ref(null);
-const results = ref<OrphaRow[]>([]);
+const elements = ref<OrphaRow[]>([]);
+const orphanets = ref<OrphaRow[]>([]);
+const orphanettas = ref<OrphanettaRow[]>([]);
 let names:string[]=[]
 
-// Funzione per leggere il file CSV
-async function loadCSV() {
-
-  parse(csvData, {
+// Funzione per leggere il file Orphanet.csv
+async function loadCSVOrphanet() {
+  parse(orphanet, {
     columns: (header) => header.map((h:any) => h.replace(/^\uFEFF/, '')), // Rimuove il BOM    delimiter: ';', // Delimitatore predefinito
     delimiter: ';', // Delimitatore
     trim: true, // Rimuove spazi bianchi dai valori
@@ -28,65 +26,97 @@ async function loadCSV() {
     if (err) {
       console.error('Error while parsing CSV:', err);
     } else {
-      results.value = records;
+      orphanets.value = records;
       records.forEach(r => {names.push(r['Conditions'])})
-      console.log('Finished reading the file:', results.value.length);
+      console.log('Finished reading the file:', orphanets.value.length);
     }
   });
 }
 
-onMounted(() => { loadCSV(); })
 
-watch(name, () => { })
+const search = (event:any) => {
+    setTimeout(() => {
+        if (!event.query.trim().length) {
+            elements.value = orphanets.value;
+        } else {
+          elements.value = orphanets.value.filter((row) => {
+                return row.Conditions.toLowerCase().startsWith(event.query.toLowerCase());
+            });
+        }
+    }, 250);
+}
+
+const resolver = ref(zodResolver(
+    z.object({
+        country: z.union([
+            z.object({
+                name: z.string().min(1, 'Country is required.')
+            }),
+            z.any().refine((val) => false, { message: 'Country is required.' })
+        ])
+    })
+));
+
+// Funzione per leggere il file Orphanet.csv
+async function loadCSVOrphanetta() {
+  parse(orphanetta, {
+    columns: (header) => header.map((h:any) => h.replace(/^\uFEFF/, '')), // Rimuove il BOM    delimiter: ';', // Delimitatore predefinito
+    delimiter: ';', // Delimitatore
+    trim: true, // Rimuove spazi bianchi dai valori
+  skip_empty_lines: true, // Salta le righe vuote
+  relax_column_count: true // Permette righe con numero di colonne variabile
+  }, (err, records: OrphanettaRow[]) => {
+    if (err) {
+      console.error('Error while parsing CSV:', err);
+    } else {
+      records.forEach((record) => {
+        if(orphanets.value.map(v => v.Conditions).includes(record.Conditions)){
+          orphanettas.value.push(record)
+        }
+      });
+      records.forEach(r => {names.push(r['Conditions'])})
+      console.log('Finished reading the file:', orphanettas.value.length);
+    }
+  });
+}
+
+onMounted(() => { loadCSVOrphanet(); })
+
+watch(elements,() => {
+  // loadCSVOrphanetta()
+})
+
+const onFormSubmit = () => {
+    console.log("Letsggoooo")
+};
 
 </script>
 
 <template>
-  <div class="flex flex-col justify-items-center items-center bg-violet-950 text-white w-full h-full">
+  <div class="flex flex-col justify-items-center items-center bg-violet-600 text-white w-full h-full">
     <p>ORPHA.NET.TA</p>
-
-    <p></p>
 
     <div class="flex flex-row justify-center items-center space-x-5 mt-5">
       <div class="multiselect-container">
     <label for="diseaseName" class="custom-label">Enter disease name:</label>
-    <Multiselect class="text-black"
-    id="diseaseName"
-      v-model="name"
-      :options="names"
-      :searchable="true"
-      :placeholder="'' "
-    />
-  </div>
-      <!--<div v-show="name.length > 5" class="flex flex-col text-black">
-        <input type="text" name="Number" id="number">
-      </div>-->
+  
+   
+    <Form v-slot="$form" :resolver="resolver" :initialValues="elements" @submit="onFormSubmit" class="flex justify-center flex-col gap-4 w-full md:w-56">
+    <div class="flex flex-col gap-1">
+      <AutoComplete
+    v-model="elements"
+    optionLabel="Conditions" :suggestions="orphanets" @complete="search" />
     </div>
+    <Button type="submit" severity="secondary" label="Submit" />
+</Form>
 
-    <DiseaseCard />
+  </div>
+  
+    </div>
+    <DiseaseCard :elements="elements"/>
   </div>
 
 </template>
 
 <style scoped>
-/* Set custom label width and ensure proper alignment */
-.custom-label {
-  display: block;
-  width: 300px; /* Adjust this value as needed */
-  margin-bottom: 5px;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-/* Optional: Adjust multiselect width to align with label */
-.multiselect-container .multiselect {
-  width: 400px; /* Adjust width of multiselect */
-}
-
-.multiselect-container .multiselect__content-wrapper {
-  display: block !important; /* Forza la visualizzazione delle opzioni */
-  position: relative; /* Mantiene le opzioni dentro al layout */
-  max-height: none !important; /* Permette di mostrare tutte le opzioni */
-  visibility: visible !important; /* Evita che il menu scompaia */
-}
 </style>
