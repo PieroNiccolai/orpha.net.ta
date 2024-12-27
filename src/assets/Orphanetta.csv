@@ -1,4 +1,4 @@
-﻿;Conditions;Uniprot;Residue;Position;Mutated;Effects;PDB;ICD-11;ICD-10
+﻿index;Conditions;Uniprot;Residue;Position;Mutated;Effects;PDB;ICD-11;ICD-10
 0;Mitochondrial trifunctional protein deficiency;P40939;LEU;733;PRO;4;5ZQZ;5C52.01;G71.3
 1;Mitochondrial trifunctional protein deficiency;P40939;ARG;676;HIS;4;5ZQZ;5C52.01;G71.3
 2;Mitochondrial trifunctional protein deficiency;P40939;ARG;676;CYS;4;5ZQZ;5C52.01;G71.3

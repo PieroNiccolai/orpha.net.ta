@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import DiseaseCard from './components/DiseaseCard.vue';
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted ,watch} from 'vue';
 import { parse } from 'csv-parse/browser/esm';
 import orphanet from './assets/Orphanet.csv?raw'
 import orphanetta from './assets/Orphanetta.csv?raw'
 import AutoComplete from 'primevue/autocomplete';
 import Button from 'primevue/button';
-import { zodResolver } from '@primevue/forms/resolvers/zod';
-import { z } from 'zod';
 
-const elements = ref<OrphaRow[]>([]);
+const selectedOrpha = ref<OrphaRow | null>(null); // Track the selected value
+const rawOrpha = ref<OrphaRow[]>([]);
 const orphanets = ref<OrphaRow[]>([]);
-const orphanettas = ref<OrphanettaRow[]>([]);
-let names:string[]=[]
+const rawOrphetta = ref<OrphanettaRow[]>([]);
+const selectedOrphettas = ref<OrphanettaRow[]>([]); // Track the selected value
+let isSubmitted=ref(false);
 
 // Funzione per leggere il file Orphanet.csv
 async function loadCSVOrphanet() {
@@ -26,9 +26,8 @@ async function loadCSVOrphanet() {
     if (err) {
       console.error('Error while parsing CSV:', err);
     } else {
-      orphanets.value = records;
-      records.forEach(r => {names.push(r['Conditions'])})
-      console.log('Finished reading the file:', orphanets.value.length);
+      rawOrpha.value = records;
+      console.log('Finished reading the file:', rawOrpha.value.length);
     }
   });
 }
@@ -37,30 +36,19 @@ async function loadCSVOrphanet() {
 const search = (event:any) => {
     setTimeout(() => {
         if (!event.query.trim().length) {
-            elements.value = orphanets.value;
+          orphanets.value = rawOrpha.value;
         } else {
-          elements.value = orphanets.value.filter((row) => {
+          orphanets.value = rawOrpha.value.filter((row) => {
                 return row.Conditions.toLowerCase().startsWith(event.query.toLowerCase());
             });
         }
     }, 250);
 }
 
-const resolver = ref(zodResolver(
-    z.object({
-        country: z.union([
-            z.object({
-                name: z.string().min(1, 'Country is required.')
-            }),
-            z.any().refine((val) => false, { message: 'Country is required.' })
-        ])
-    })
-));
-
 // Funzione per leggere il file Orphanet.csv
 async function loadCSVOrphanetta() {
   parse(orphanetta, {
-    columns: (header) => header.map((h:any) => h.replace(/^\uFEFF/, '')), // Rimuove il BOM    delimiter: ';', // Delimitatore predefinito
+    columns: (header) => header.map((h:any) => h.replace(/^\uFEFF/, '')),
     delimiter: ';', // Delimitatore
     trim: true, // Rimuove spazi bianchi dai valori
   skip_empty_lines: true, // Salta le righe vuote
@@ -69,52 +57,55 @@ async function loadCSVOrphanetta() {
     if (err) {
       console.error('Error while parsing CSV:', err);
     } else {
-      records.forEach((record) => {
-        if(orphanets.value.map(v => v.Conditions).includes(record.Conditions)){
-          orphanettas.value.push(record)
-        }
-      });
-      records.forEach(r => {names.push(r['Conditions'])})
-      console.log('Finished reading the file:', orphanettas.value.length);
+      rawOrphetta.value = records;
+      console.log('Finished reading the file:', rawOrphetta.value.length);
     }
   });
 }
 
-onMounted(() => { loadCSVOrphanet(); })
+onMounted(() => { loadCSVOrphanet(); loadCSVOrphanetta() })
 
-watch(elements,() => {
-  // loadCSVOrphanetta()
-})
-
-const onFormSubmit = () => {
-    console.log("Letsggoooo")
+function submitButton(){
+  isSubmitted.value = true
+  selectedOrphettas.value = rawOrphetta.value.filter((o:OrphanettaRow) => 
+  o.Conditions?.trim().toLowerCase() === selectedOrpha.value?.Conditions.trim().toLowerCase()
+);
+console.log(selectedOrphettas.value)
 };
+
+watch(selectedOrpha,()=>{
+  selectedOrphettas.value=[]
+  isSubmitted.value=false;
+})
 
 </script>
 
 <template>
-  <div class="flex flex-col justify-items-center items-center bg-violet-600 text-white w-full h-full">
-    <p>ORPHA.NET.TA</p>
+  <div class="flex flex-col justify-center items-center bg-violet-600 text-white w-screen min-h-screen p-10">
+    <p class="text-yellow-300 font-extrabold text-[150px]">ORPHA.NET.TA WEB</p>
 
-    <div class="flex flex-row justify-center items-center space-x-5 mt-5">
-      <div class="multiselect-container">
-    <label for="diseaseName" class="custom-label">Enter disease name:</label>
-  
-   
-    <Form v-slot="$form" :resolver="resolver" :initialValues="elements" @submit="onFormSubmit" class="flex justify-center flex-col gap-4 w-full md:w-56">
-    <div class="flex flex-col gap-1">
-      <AutoComplete
-    v-model="elements"
-    optionLabel="Conditions" :suggestions="orphanets" @complete="search" />
-    </div>
-    <Button type="submit" severity="secondary" label="Submit" />
-</Form>
+    <div class="flex flex-col w-full justify-center items-center space-y-10 mt-10">
+            <AutoComplete v-model="selectedOrpha" optionLabel="Conditions" :suggestions="orphanets" @complete="search" placeholder="Type or select a disease"/>
+          <div v-if="selectedOrpha?.Conditions!=undefined" class="flex flex-col justify-center items-center text-white font-semibold p-10">
+            <span>
+              <p>{{ "Name: " + selectedOrpha?.Conditions }}</p>
+              <p>{{ "Disease code from ICD-10: " + selectedOrpha?.['ICD-10'] }}</p>
+              <p>{{ "Disease code from ICD-11: " + selectedOrpha?.['ICD-11'] }}</p>
+            </span>
+          </div>
+          <Button type="submit" severity="secondary" label="Submit" v-on:click="submitButton()" />
+      </div>
 
-  </div>
-  
+      <div v-if="selectedOrphettas.length > 0 && isSubmitted" key="element.index">
+        <div v-for="element in selectedOrphettas" class="m-4">
+          <DiseaseCard :element="element"/>
+        </div>
+      </div>
+      <div v-else-if="selectedOrphettas.length == 0 && isSubmitted && selectedOrpha" class="flex font-extrabold text-center text-white mt-5">
+        <span>No record found</span>
+      </div>
     </div>
-    <DiseaseCard :elements="elements"/>
-  </div>
+    
 
 </template>
 
